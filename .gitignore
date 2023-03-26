@@ -1,0 +1,7 @@
+.wwebjs_auth
+.vscode
+node_modules
+*.env
+run.bat
+token.json
+credentials.json
