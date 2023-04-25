@@ -1,7 +1,7 @@
 require('dotenv').config()
 
 const qrcode = require("qrcode-terminal");
-const { Client, RemoteAuth } = require("whatsapp-web.js");
+const { Client, LocalAuth, RemoteAuth } = require("whatsapp-web.js");
 
 // Require database
 const { MongoStore } = require("wwebjs-mongo");
@@ -17,18 +17,25 @@ const text1 = `option 1 message sample`;
 
 const text2 = `option 2 message sample`;
 
-mongoose
-    .connect(
-        process.env.DB
-    )
-    .then(() => {
-        const store = new MongoStore({ mongoose: mongoose });
+// console.log(process.env.DB)
+// console.log(process.env.NRO)
+
+// mongoose
+//     .connect(
+//         process.env.DB
+//     )
+//     .then(() => {
+//         const store = new MongoStore({ mongoose: mongoose });
+
+//         const client = new Client({
+//             authStrategy: new RemoteAuth({
+//                 store: store,
+//                 backupSyncIntervalMs: 300000,
+//             }),
+//         });
 
         const client = new Client({
-            authStrategy: new RemoteAuth({
-                store: store,
-                backupSyncIntervalMs: 300000,
-            }),
+            authStrategy: new LocalAuth(),
         });
 
         client.initialize();
@@ -58,18 +65,12 @@ mongoose
 
             if (answerPeople) responderMensaje(msg);
         });
-    });
+    // });
 
 async function sendMessage(msg) {
     const contact = await msg.getContact();
-    const chat = await msg.getChat();
 
-    console.log("contact.pushname: " + contact.pushname);
-    console.log("contact.id.user: " + contact.id.user);
-    console.log("contact.number: " + contact.number);
-    console.log("chat.name: " + chat.name);
-
-    if (listening && chat.name === process.env.TEMP) {
+    if (listening && contact.isMe) {
         listening = false;
         answerPeople = msg.body === "true";
         msg.reply("Answer People: " + answerPeople)
@@ -92,7 +93,6 @@ async function responderMensaje(msg) {
             const chat = await msg.getChat();
 
             await chat.sendMessage(`Hola, ${contact.pushname}\n${textMenu}`);
-
             break;
     }
 }
