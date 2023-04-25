@@ -7,6 +7,13 @@ const { Client, LocalAuth, RemoteAuth } = require("whatsapp-web.js");
 const { MongoStore } = require("wwebjs-mongo");
 const mongoose = require("mongoose");
 
+const http = require('http');
+const fs = require('fs');
+const ejs = require('ejs');
+
+wqr = '';
+const port = process.env.PORT || 3000;
+
 let listening, answerPeople;
 
 const textMenu = `text menu sample:
@@ -34,43 +41,77 @@ const text2 = `option 2 message sample`;
 //             }),
 //         });
 
-        const client = new Client({
-            authStrategy: new LocalAuth(),
-        });
+const client = new Client({
+    authStrategy: new LocalAuth(),
+});
 
-        client.initialize();
+client.initialize();
 
-        client.on("qr", (qr) => {
-            qrcode.generate(qr, { small: true });
-        });
 
-        client.on("remote_session_saved", () => {
-            console.log("remote session saved");
-        });
+client.on("qr", (qr) => {
+    console.log('QR event');
+    wqr = qr;
+    server()
+});
 
-        client.on("ready", () => {
-            listening = true;
-            console.log("Client is ready!");
-        });
+client.on("remote_session_saved", () => {
+    console.log("remote session saved");
+});
 
-        client.on("message_create", (msg) => {
-            console.log("message_create");
-            sendMessage(msg);
-        });
+client.on("ready", () => {
+    listening = true;
+    console.log("Client is ready!");
+    
+    if(wqr == "")
+        server();
+    
+    wqr = "";
+});
 
-        client.on("message", (msg) => {
-            console.log("message");
+function server() {
+    const s = http.createServer((req, res) => {
+        res.setHeader("Content-Type", "text/html");
+        res.writeHead(200);
+        res.end(`
+                    <!-- index.html -->
+                    <html>
+                    <head>
+                        <h1 id="titulo">Codigo QR:</h1>  
+                    </head>  
+                    <body>
+                        <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+                        <div id="qrcode"></div>
+                        <script type="text/javascript">
+                            if("${wqr}" == "")
+                                document.getElementById("titulo").textContent = "QR Code not available. You are probably already logged in.";
+                            else
+                                new QRCode(document.getElementById("qrcode"), "${wqr}");
+                        </script>
+                    </body>
+                    </html>
+                `);
+    });
+    s.listen(port, 'localhost');
+}
 
-            sendMessage(msg);
+client.on("message_create", (msg) => {
+    console.log("message_create");
+    sendMessage(msg);
+});
 
-            if (answerPeople) responderMensaje(msg);
-        });
-    // });
+client.on("message", (msg) => {
+    console.log("message");
+
+    sendMessage(msg);
+
+    if (answerPeople) responderMensaje(msg);
+});
 
 async function sendMessage(msg) {
     const contact = await msg.getContact();
+    const chat = await msg.getChat();
 
-    if (listening && contact.isMe) {
+    if (listening && chat.name === process.env.NRO) {
         listening = false;
         answerPeople = msg.body === "true";
         msg.reply("Answer People: " + answerPeople)
