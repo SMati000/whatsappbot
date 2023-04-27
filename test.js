@@ -8,8 +8,6 @@ const { MongoStore } = require("wwebjs-mongo");
 const mongoose = require("mongoose");
 
 const http = require('http');
-const fs = require('fs');
-const ejs = require('ejs');
 
 wqr = '';
 const port = process.env.PORT || 3000;
@@ -47,11 +45,39 @@ const client = new Client({
 
 client.initialize();
 
+const s = http.createServer((req, res) => {
+    res.setHeader("Content-Type", "text/html");
+    res.writeHead(200);
+    res.end(`
+                <!-- index.html -->
+                <html>
+                <head>
+                    <h1 id="titulo">Codigo QR:</h1>  
+                </head>  
+                <body>
+                    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+                    <text id="scanqr"></text>
+                    <div id="qrcode"></div>
+                    <text id="reload"></text>
+                    <script type="text/javascript">
+                        if("${wqr}" == "")
+                            document.getElementById("titulo").textContent = "QR Code not available. You are probably already logged in.";
+                        else {
+                            document.getElementById("scanqr").textContent = "Scan this QR code to log into WhatsApp.";
+                            document.getElementById("reload").textContent = "After logging in, please wait a few seconds and reload the page.";
+                            new QRCode(document.getElementById("qrcode"), "${wqr}");
+                        }
+                    </script>
+                </body>
+                </html>
+            `);
+});
+
+s.listen(port, 'localhost');
 
 client.on("qr", (qr) => {
     console.log('QR event');
     wqr = qr;
-    server()
 });
 
 client.on("remote_session_saved", () => {
@@ -61,38 +87,8 @@ client.on("remote_session_saved", () => {
 client.on("ready", () => {
     listening = true;
     console.log("Client is ready!");
-    
-    if(wqr == "")
-        server();
-    
-    wqr = "";
+    wqr = '';
 });
-
-function server() {
-    const s = http.createServer((req, res) => {
-        res.setHeader("Content-Type", "text/html");
-        res.writeHead(200);
-        res.end(`
-                    <!-- index.html -->
-                    <html>
-                    <head>
-                        <h1 id="titulo">Codigo QR:</h1>  
-                    </head>  
-                    <body>
-                        <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
-                        <div id="qrcode"></div>
-                        <script type="text/javascript">
-                            if("${wqr}" == "")
-                                document.getElementById("titulo").textContent = "QR Code not available. You are probably already logged in.";
-                            else
-                                new QRCode(document.getElementById("qrcode"), "${wqr}");
-                        </script>
-                    </body>
-                    </html>
-                `);
-    });
-    s.listen(port, 'localhost');
-}
 
 client.on("message_create", (msg) => {
     console.log("message_create");
