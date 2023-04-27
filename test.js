@@ -73,7 +73,7 @@ const s = http.createServer((req, res) => {
             `);
 });
 
-s.listen(port, 'localhost');
+s.listen(port);
 
 client.on("qr", (qr) => {
     console.log('QR event');
